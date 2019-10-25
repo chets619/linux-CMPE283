@@ -7388,6 +7388,9 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 		kvm_sched_yield(vcpu->kvm, a1);
 		ret = 0;
 		break;
+	case 0x283:
+		ret = 0x0033383245504D43;
+		break;
 #ifdef CONFIG_X86_64
 	case KVM_HC_CLOCK_PAIRING:
 		ret = kvm_pv_clock_pairing(vcpu, a0, a1);
