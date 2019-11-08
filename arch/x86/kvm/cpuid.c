@@ -1037,16 +1037,38 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
 
+// extern int *total_ptr;
+// extern int *exit_ptr;
+extern int kvm_vmx_max_exit_handlers;
+u32 total_exits;
+u32 exit_array[100] = {0}; 
+
+EXPORT_SYMBOL(total_exits);
+EXPORT_SYMBOL(exit_array);
+
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
 	u32 eax, ebx, ecx, edx;
+	int int_ecx;
 
 	if (cpuid_fault_enabled(vcpu) && !kvm_require_cpl(vcpu, 0))
 		return 1;
 
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
-	kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
+	int_ecx = (int) ecx;
+
+	if (eax == 0x4FFFFFFF) {
+		printk("TOTAL EXITS: %u \n", total_exits);
+		eax = total_exits;
+	} else if (eax == 0x4FFFFFFD) {
+		printk("TOTAL EXITS of Type: %u\n", exit_array[int_ecx]);
+		eax = exit_array[int_ecx];
+	} else {
+		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
+	}
+
+
 	kvm_rax_write(vcpu, eax);
 	kvm_rbx_write(vcpu, ebx);
 	kvm_rcx_write(vcpu, ecx);

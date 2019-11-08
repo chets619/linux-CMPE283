@@ -5615,6 +5615,8 @@ static int (*kvm_vmx_exit_handlers[])(struct kvm_vcpu *vcpu) = {
 
 static const int kvm_vmx_max_exit_handlers =
 	ARRAY_SIZE(kvm_vmx_exit_handlers);
+	
+EXPORT_SYMBOL(kvm_vmx_max_exit_handlers);
 
 static void vmx_get_exit_info(struct kvm_vcpu *vcpu, u64 *info1, u64 *info2)
 {
@@ -5854,6 +5856,10 @@ void dump_vmcs(void)
 		       vmcs_read16(VIRTUAL_PROCESSOR_ID));
 }
 
+extern u32 total_exits;
+
+extern u32 exit_array[]; 
+
 /*
  * The guest has exited.  See if we can fix it or if we need userspace
  * assistance.
@@ -5944,9 +5950,16 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 		}
 	}
 
+	// Increment total counter (increase counter even if invalid reason, still an exit)
+	total_exits++;
+
 	if (exit_reason < kvm_vmx_max_exit_handlers
-	    && kvm_vmx_exit_handlers[exit_reason])
+	    && kvm_vmx_exit_handlers[exit_reason]) {
+
+		exit_array[exit_reason]++;
+
 		return kvm_vmx_exit_handlers[exit_reason](vcpu);
+	}
 	else {
 		vcpu_unimpl(vcpu, "vmx: unexpected exit reason 0x%x\n",
 				exit_reason);
