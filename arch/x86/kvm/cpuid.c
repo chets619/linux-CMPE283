@@ -1040,8 +1040,9 @@ EXPORT_SYMBOL_GPL(kvm_cpuid);
 // extern int *total_ptr;
 // extern int *exit_ptr;
 extern int kvm_vmx_max_exit_handlers;
-u32 total_exits;
-u32 exit_array[100] = {0}; 
+atomic64_t total_exits = ATOMIC_INIT(0);
+atomic64_t total_exit_time = ATOMIC_INIT(0);
+atomic_t exit_array[75] = ATOMIC_INIT(0);
 
 EXPORT_SYMBOL(total_exits);
 EXPORT_SYMBOL(exit_array);
@@ -1059,11 +1060,14 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 	int_ecx = (int) ecx;
 
 	if (eax == 0x4FFFFFFF) {
-		printk("TOTAL EXITS: %u \n", total_exits);
-		eax = total_exits;
+		printk("TOTAL EXITS: %llu \n", atomic64_read(&total_exits));
+		eax = atomic64_read(&total_exits);
+	} else if (eax == 0x4FFFFFFE) {
+		ebx = (uint32_t)((atomic64_read(&total_exit_time) & 0xFFFFFFFF00000000LL) >> 32);
+		ecx = (uint32_t)(atomic64_read(&total_exit_time) & 0xFFFFFFFFLL);
 	} else if (eax == 0x4FFFFFFD) {
-		printk("TOTAL EXITS of Type: %u\n", exit_array[int_ecx]);
-		eax = exit_array[int_ecx];
+		// printk("TOTAL EXITS of Type: %llu\n", atomic64_read(&exit_array[int_ecx]));
+		// eax = atomic64_read(&exit_array[int_ecx]);
 	} else {
 		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
 	}

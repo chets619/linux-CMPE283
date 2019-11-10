@@ -5856,9 +5856,10 @@ void dump_vmcs(void)
 		       vmcs_read16(VIRTUAL_PROCESSOR_ID));
 }
 
-extern u32 total_exits;
 
-extern u32 exit_array[]; 
+extern atomic_t exit_array[]; 
+extern atomic64_t total_exits;
+extern atomic64_t total_exit_time;
 
 /*
  * The guest has exited.  See if we can fix it or if we need userspace
@@ -5869,6 +5870,9 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
 	u32 exit_reason = vmx->exit_reason;
 	u32 vectoring_info = vmx->idt_vectoring_info;
+	u64 start_time, end_time;
+
+	start_time = rdtsc();
 
 	trace_kvm_exit(exit_reason, vcpu, KVM_ISA_VMX);
 
@@ -5951,12 +5955,15 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 	}
 
 	// Increment total counter (increase counter even if invalid reason, still an exit)
-	total_exits++;
+	atomic64_inc(&total_exits);
 
 	if (exit_reason < kvm_vmx_max_exit_handlers
 	    && kvm_vmx_exit_handlers[exit_reason]) {
 
-		exit_array[exit_reason]++;
+		// atomic64_inc(&exit_array[exit_reason]);
+
+		end_time = rdtsc();
+		atomic64_add(end_time - start_time, &total_exit_time);
 
 		return kvm_vmx_exit_handlers[exit_reason](vcpu);
 	}
@@ -5969,6 +5976,9 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 			KVM_INTERNAL_ERROR_UNEXPECTED_EXIT_REASON;
 		vcpu->run->internal.ndata = 1;
 		vcpu->run->internal.data[0] = exit_reason;
+
+		end_time = rdtsc();
+		atomic64_add(end_time - start_time, &total_exit_time);
 		return 0;
 	}
 }
