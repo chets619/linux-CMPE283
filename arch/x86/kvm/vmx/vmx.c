@@ -5873,6 +5873,8 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 	u64 start_time, end_time;
 
 	start_time = rdtsc();
+	// Increment total counter (increase counter even if invalid reason, still an exit)
+	atomic64_inc(&total_exits);
 
 	trace_kvm_exit(exit_reason, vcpu, KVM_ISA_VMX);
 
@@ -5887,17 +5889,25 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 		vmx_flush_pml_buffer(vcpu);
 
 	/* If guest state is invalid, start emulating */
-	if (vmx->emulation_required)
+	if (vmx->emulation_required) {
+		end_time = rdtsc();
+		atomic64_add(end_time - start_time, &total_exit_time);
 		return handle_invalid_guest_state(vcpu);
+	}
 
-	if (is_guest_mode(vcpu) && nested_vmx_exit_reflected(vcpu, exit_reason))
+	if (is_guest_mode(vcpu) && nested_vmx_exit_reflected(vcpu, exit_reason)) {
+		end_time = rdtsc();
+		atomic64_add(end_time - start_time, &total_exit_time);
 		return nested_vmx_reflect_vmexit(vcpu, exit_reason);
+	}
 
 	if (exit_reason & VMX_EXIT_REASONS_FAILED_VMENTRY) {
 		dump_vmcs();
 		vcpu->run->exit_reason = KVM_EXIT_FAIL_ENTRY;
 		vcpu->run->fail_entry.hardware_entry_failure_reason
 			= exit_reason;
+		end_time = rdtsc();
+		atomic64_add(end_time - start_time, &total_exit_time);
 		return 0;
 	}
 
@@ -5906,6 +5916,8 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 		vcpu->run->exit_reason = KVM_EXIT_FAIL_ENTRY;
 		vcpu->run->fail_entry.hardware_entry_failure_reason
 			= vmcs_read32(VM_INSTRUCTION_ERROR);
+		end_time = rdtsc();
+		atomic64_add(end_time - start_time, &total_exit_time);
 		return 0;
 	}
 
@@ -5932,6 +5944,8 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 			vcpu->run->internal.data[3] =
 				vmcs_read64(GUEST_PHYSICAL_ADDRESS);
 		}
+		end_time = rdtsc();
+		atomic64_add(end_time - start_time, &total_exit_time);
 		return 0;
 	}
 
@@ -5953,9 +5967,6 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 			vmx->loaded_vmcs->soft_vnmi_blocked = 0;
 		}
 	}
-
-	// Increment total counter (increase counter even if invalid reason, still an exit)
-	atomic64_inc(&total_exits);
 
 	if (exit_reason < kvm_vmx_max_exit_handlers
 	    && kvm_vmx_exit_handlers[exit_reason]) {
