@@ -1072,20 +1072,31 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 	} else if (eax == 0x4FFFFFFE) {
 		ebx = (uint32_t)((atomic64_read(&total_exit_time)) >> 32);
 		ecx = (uint32_t)(atomic64_read(&total_exit_time) & 0xFFFFFFFFLL);
-	} else if (isInvalidExitNumber(ecx)) {
-		eax = 0;
-		ebx = 0;
-		ecx = 0;
-		edx = 0xFFFFFFFF;	
-	} else if (eax == 0x4FFFFFFD && ((int) atomic64_read(&exit_array[int_ecx])) > 0) {
-		printk("TOTAL EXITS of Type: %d is %lld \n", int_ecx, atomic64_read(&exit_array[int_ecx]));
-		eax = atomic64_read(&exit_array[int_ecx]);
-	} else if (eax == 0x4FFFFFFC && ((int) atomic64_read(&time_array[int_ecx])) > 0) {
-		printk("TOTAL Time spent processing exits of Type: %d is %lld \n", int_ecx, atomic64_read(&time_array[int_ecx]));
-		ebx = (uint32_t) ((atomic64_read(&time_array[int_ecx])) >> 32);
-		ecx = (uint32_t) ((atomic64_read(&time_array[int_ecx]) & 0xFFFFFFFF ));
-	} else if(((int) atomic64_read(&exit_array[int_ecx])) == 0 || ((int) atomic64_read(&time_array[int_ecx])) == 0) {
+	} else if (eax == 0x4FFFFFFD) {
+		if (((int) atomic64_read(&exit_array[int_ecx])) > 0) {
+			printk("TOTAL EXITS of Type: %d is %lld \n", int_ecx, atomic64_read(&exit_array[int_ecx]));
+			eax = atomic64_read(&exit_array[int_ecx]);			
+		}  else if (isInvalidExitNumber(ecx)) {
+			eax = 0;
+			ebx = 0;
+			ecx = 0;
+			edx = 0xFFFFFFFF;	
+		} else {
 			eax = ebx = ecx = edx = 0;
+		}
+	} else if (eax == 0x4FFFFFFC) {
+		if (((int) atomic64_read(&time_array[int_ecx])) > 0) {
+			printk("TOTAL Time spent processing exits of Type: %d is %lld \n", int_ecx, atomic64_read(&time_array[int_ecx]));
+			ebx = (uint32_t) ((atomic64_read(&time_array[int_ecx])) >> 32);
+			ecx = (uint32_t) ((atomic64_read(&time_array[int_ecx]) & 0xFFFFFFFF ));			
+		}  else if (isInvalidExitNumber(ecx)) {
+			eax = 0;
+			ebx = 0;
+			ecx = 0;
+			edx = 0xFFFFFFFF;	
+		} else {
+			eax = ebx = ecx = edx = 0;
+		}
 	} else {
 		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
 	}
