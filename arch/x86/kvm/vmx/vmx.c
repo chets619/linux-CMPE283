@@ -5857,8 +5857,8 @@ void dump_vmcs(void)
 }
 
 
-extern atomic64_t exit_array[]; 
-extern atomic64_t time_array[]; 
+extern atomic64_t exit_array[70]; 
+extern atomic64_t time_array[70]; 
 extern atomic64_t total_exits;
 extern atomic64_t total_exit_time;
 
