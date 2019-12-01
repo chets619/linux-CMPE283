@@ -1042,10 +1042,17 @@ EXPORT_SYMBOL_GPL(kvm_cpuid);
 extern int kvm_vmx_max_exit_handlers;
 atomic64_t total_exits = ATOMIC_INIT(0);
 atomic64_t total_exit_time = ATOMIC_INIT(0);
-atomic_t exit_array[75] = ATOMIC_INIT(0);
+uint64_t exit_array[70];
+uint64_t time_array[70];
 
 EXPORT_SYMBOL(total_exits);
 EXPORT_SYMBOL(exit_array);
+EXPORT_SYMBOL(time_array);
+
+
+bool isInvalidExitNumber(int exit_number) {
+	return exit_number > 68 || exit_number < 0 || exit_number == 35 || exit_number == 38 || exit_number == 42;
+}
 
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
@@ -1065,9 +1072,22 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 	} else if (eax == 0x4FFFFFFE) {
 		ebx = (uint32_t)((atomic64_read(&total_exit_time) & 0xFFFFFFFF00000000LL) >> 32);
 		ecx = (uint32_t)(atomic64_read(&total_exit_time) & 0xFFFFFFFFLL);
-	} else if (eax == 0x4FFFFFFD) {
-		// printk("TOTAL EXITS of Type: %llu\n", atomic64_read(&exit_array[int_ecx]));
-		// eax = atomic64_read(&exit_array[int_ecx]);
+	} else if (isInvalidExitNumber(ecx)) {
+		eax = 0;
+		ebx = 0;
+		ecx = 0;
+		edx = 0xFFFFFFFF;	
+	} else if (eax == 0x4FFFFFFD && exit_array[int_ecx] > 0) {
+		u32 vmx_msr_low, vmx_msr_high;
+		printk("TOTAL EXITS of Type: %d is %lld \n", int_ecx, exit_array[int_ecx]);
+		eax = exit_array[int_ecx];
+	} else if (eax == 0x4FFFFFFC && time_array[int_ecx] > 0) {
+		printk("TOTAL Time spent processing exits of Type: %d is %lld \n", int_ecx, time_array[int_ecx]);
+		eax = time_array[int_ecx];
+		ebx = (uint32_t) time_array[int_ecx] & 0xFFFFFFFF00000000LL >> 32;
+		ecx = (uint32_t) time_array[int_ecx] & 0xFFFFFFFFLL;
+	} else {
+		eax = ebx = ecs = edx = 0;
 	} else {
 		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
 	}

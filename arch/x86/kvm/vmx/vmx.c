@@ -5857,7 +5857,8 @@ void dump_vmcs(void)
 }
 
 
-extern atomic_t exit_array[]; 
+extern uint64_t exit_array[]; 
+extern uint64_t time_array[]; 
 extern atomic64_t total_exits;
 extern atomic64_t total_exit_time;
 
@@ -5971,10 +5972,11 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu)
 	if (exit_reason < kvm_vmx_max_exit_handlers
 	    && kvm_vmx_exit_handlers[exit_reason]) {
 
-		// atomic64_inc(&exit_array[exit_reason]);
+		exit_array[exit_reason]++;
 
 		end_time = rdtsc();
 		atomic64_add(end_time - start_time, &total_exit_time);
+		time_array[exit_reason] = time_array[exit_reason] + end_time - start_time;
 
 		return kvm_vmx_exit_handlers[exit_reason](vcpu);
 	}
