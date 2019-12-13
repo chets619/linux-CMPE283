@@ -1040,14 +1040,15 @@ EXPORT_SYMBOL_GPL(kvm_cpuid);
 // extern int *total_ptr;
 // extern int *exit_ptr;
 extern int kvm_vmx_max_exit_handlers;
-atomic64_t total_exits = ATOMIC_INIT(0);
-atomic64_t total_exit_time = ATOMIC_INIT(0);
-atomic64_t exit_array[70];
-atomic64_t time_array[70];
+static atomic64_t total_exits = ATOMIC_INIT(0);
+static atomic64_t total_exit_time = ATOMIC_INIT(0);
+static atomic64_t exit_array[70];
+static atomic64_t time_array[70];
 
 EXPORT_SYMBOL(total_exits);
 EXPORT_SYMBOL(exit_array);
 EXPORT_SYMBOL(time_array);
+EXPORT_SYMBOL(total_exit_time);
 
 
 bool isInvalidExitNumber(int exit_number) {
